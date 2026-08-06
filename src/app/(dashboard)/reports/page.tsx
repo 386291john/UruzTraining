@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { BarChart3 } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -30,6 +30,14 @@ const VALID_TABS = REPORT_TABS.map(t => t.value)
  * Validates: Requirements 11.1, 11.2, 11.3, 11.4, 11.5, 11.6, 11.7, 11.8, 13.4
  */
 export default function ReportsPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center py-12"><p className="text-muted-foreground">Cargando informes...</p></div>}>
+      <ReportsContent />
+    </Suspense>
+  )
+}
+
+function ReportsContent() {
   const searchParams = useSearchParams()
   const tabParam = searchParams.get('tab')
   const initialTab: ReportType = (tabParam && VALID_TABS.includes(tabParam as ReportType))
