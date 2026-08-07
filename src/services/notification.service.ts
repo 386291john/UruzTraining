@@ -535,6 +535,71 @@ export async function expireStaleActiveMemberships(): Promise<number> {
 // --- Expiration Notification (triggered on entry) ---
 
 /**
+ * Sends a "plan consumed" SMS when remaining_days reaches 0.
+ * Uses notification_type 'plan_consumed' to avoid conflict with expiration_reminder.
+ * Fire-and-forget.
+ */
+export async function sendPlanConsumedNotification(
+  affiliateId: string,
+  affiliateName: string,
+  phone: string | null | undefined,
+  membershipId: string
+): Promise<void> {
+  try {
+    if (!phone || phone.trim().length === 0) {
+      return
+    }
+
+    // Check if already sent for this membership
+    const existing = await notificationRepository.findByAffiliateMembershipAndType(
+      affiliateId,
+      membershipId,
+      'plan_consumed'
+    )
+
+    if (existing) return
+
+    const message = `Hola ${affiliateName}, has consumido todos los dias de tu plan en UruzTraining. Renueva tu plan para seguir entrenando!`
+
+    const notification = await notificationRepository.create({
+      affiliate_id: affiliateId,
+      membership_id: membershipId,
+      notification_type: 'plan_consumed',
+      status: 'pending',
+      attempts: 0,
+      phone_used: phone,
+    })
+
+    const result = await provider.send({
+      recipientPhone: phone,
+      affiliateName,
+      expirationDate: '',
+      message,
+    })
+
+    if (result.success) {
+      await notificationRepository.update(notification.id, {
+        status: 'sent',
+        attempts: 1,
+        last_attempt_at: new Date().toISOString(),
+        external_message_id: result.messageId ?? null,
+      })
+      console.log(`[NotificationService] Plan agotado enviado a ${affiliateName} (${phone})`)
+    } else {
+      await notificationRepository.update(notification.id, {
+        status: 'failed',
+        attempts: 1,
+        last_attempt_at: new Date().toISOString(),
+        error_message: result.error ?? 'Error desconocido',
+      })
+    }
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : 'Error desconocido'
+    console.error(`[NotificationService] Excepción plan agotado ${affiliateId}: ${errorMsg}`)
+  }
+}
+
+/**
  * Sends an expiration SMS notification when remaining days drop within the threshold.
  * Fire-and-forget: errors are logged but never thrown.
  * Checks if a notification was already sent for this membership to avoid duplicates.

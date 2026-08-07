@@ -7,7 +7,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { isExpired } from '@/services/vigency.service'
-import { sendExpirationNotification } from '@/services/notification.service'
+import { sendExpirationNotification, sendPlanConsumedNotification } from '@/services/notification.service'
 import { todayColombia, nowColombiaISO } from '@/lib/utils/date.utils'
 import * as EntryRepository from '@/repositories/entry.repository'
 import * as MembershipRepository from '@/repositories/membership.repository'
@@ -269,16 +269,27 @@ export async function validateAndRegisterEntry(
   // Get plan name for the response
   const planName = membership.plans?.name ?? 'Plan'
 
-  // --- Step 9: Send expiration notification if days are within threshold ---
-  if (updatedRemainingDays !== null && updatedRemainingDays <= 2) {
-    void sendExpirationNotification(
-      affiliate.id,
-      affiliate.full_name,
-      affiliate.phone,
-      membership.id,
-      membership.expiration_date,
-      updatedRemainingDays
-    )
+  // --- Step 9: Send notifications based on remaining days ---
+  if (updatedRemainingDays !== null) {
+    if (updatedRemainingDays === 0) {
+      // Plan consumed — send "plan agotado" notification
+      void sendPlanConsumedNotification(
+        affiliate.id,
+        affiliate.full_name,
+        affiliate.phone,
+        membership.id
+      )
+    } else if (updatedRemainingDays <= 2) {
+      // Near expiration — send reminder
+      void sendExpirationNotification(
+        affiliate.id,
+        affiliate.full_name,
+        affiliate.phone,
+        membership.id,
+        membership.expiration_date,
+        updatedRemainingDays
+      )
+    }
   }
 
   return {
