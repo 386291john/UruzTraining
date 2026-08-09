@@ -16,6 +16,7 @@ interface HeaderProps {
   title: string
   userName?: string
   onMenuClick: () => void
+  onLogout?: () => void
 }
 
 function getInitials(name: string): string {
@@ -27,7 +28,7 @@ function getInitials(name: string): string {
     .slice(0, 2)
 }
 
-export function Header({ title, userName = "Usuario", onMenuClick }: HeaderProps) {
+export function Header({ title, userName = "Usuario", onMenuClick, onLogout }: HeaderProps) {
   const { theme, toggleTheme, mounted } = useTheme()
 
   return (
@@ -79,7 +80,10 @@ export function Header({ title, userName = "Usuario", onMenuClick }: HeaderProps
               <p className="text-sm font-medium">{userName}</p>
             </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="cursor-pointer text-destructive focus:text-destructive">
+            <DropdownMenuItem
+              className="cursor-pointer text-destructive focus:text-destructive"
+              onClick={onLogout}
+            >
               <LogOut className="mr-2 h-4 w-4" />
               Cerrar sesión
             </DropdownMenuItem>

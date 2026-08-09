@@ -217,7 +217,26 @@ export async function getExpiredAffiliates(): Promise<AffiliateStatusRow[]> {
     throw new Error(`Error al obtener afiliados con días agotados: ${consumedError.message}`)
   }
 
-  const allRows = [...(expiredData ?? []), ...(consumedData ?? [])]
+  // Get active memberships whose expiration_date has already passed
+  const todayStr = new Date().toISOString().split('T')[0]
+  const { data: expiredByDateData, error: expiredByDateError } = await supabase
+    .from('memberships')
+    .select(`
+      affiliate_id,
+      remaining_days,
+      expiration_date,
+      affiliate:affiliates!memberships_affiliate_id_fkey(full_name, document_id, instructor_id),
+      plan:plans!memberships_plan_id_fkey(name)
+    `)
+    .eq('status', 'active')
+    .lt('expiration_date', todayStr)
+    .order('expiration_date', { ascending: false })
+
+  if (expiredByDateError) {
+    throw new Error(`Error al obtener afiliados vencidos por fecha: ${expiredByDateError.message}`)
+  }
+
+  const allRows = [...(expiredData ?? []), ...(consumedData ?? []), ...(expiredByDateData ?? [])]
 
   if (allRows.length === 0) return []
 

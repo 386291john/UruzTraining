@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { usePathname } from "next/navigation"
+import { useState, useEffect } from "react"
+import { usePathname, useRouter } from "next/navigation"
 import { Sidebar } from "@/components/layout/sidebar"
 import { Header } from "@/components/layout/header"
 import {
@@ -21,8 +21,6 @@ const pageTitles: Record<string, string> = {
 
 function getPageTitle(pathname: string): string {
   if (pageTitles[pathname]) return pageTitles[pathname]
-
-  // Check prefix matches for nested routes
   const match = Object.entries(pageTitles).find(
     ([path]) => path !== "/" && pathname.startsWith(path)
   )
@@ -35,12 +33,43 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [userName, setUserName] = useState("Usuario")
+  const [userRole, setUserRole] = useState("admin")
   const pathname = usePathname()
+  const router = useRouter()
   const pageTitle = getPageTitle(pathname)
 
-  // TODO: Replace with actual user data from auth context
-  const userName = "Usuario"
-  const userRole = "admin"
+  // Fetch user session
+  useEffect(() => {
+    async function fetchSession() {
+      try {
+        const res = await fetch('/api/auth/session')
+        const json = await res.json()
+        if (json.success && json.data?.user) {
+          setUserName(json.data.user.fullName || json.data.user.email || 'Usuario')
+          setUserRole(json.data.user.role || 'admin')
+
+          // Redirect gimnasio role to /entry if on any other page
+          if (json.data.user.role === 'gimnasio' && pathname !== '/entry') {
+            router.push('/entry')
+          }
+        }
+      } catch {
+        // silent
+      }
+    }
+    fetchSession()
+  }, [])
+
+  // Logout function
+  async function handleLogout() {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' })
+    } catch {
+      // silent
+    }
+    router.push('/login')
+  }
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -66,6 +95,7 @@ export default function DashboardLayout({
           title={pageTitle}
           userName={userName}
           onMenuClick={() => setSidebarOpen(true)}
+          onLogout={handleLogout}
         />
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6">

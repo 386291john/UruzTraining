@@ -22,6 +22,42 @@ const XLSX = require('xlsx')
 const { createClient } = require('@supabase/supabase-js')
 require('dotenv').config({ path: '.env.local' })
 
+/**
+ * Converts an Excel serial date number to YYYY-MM-DD string.
+ * Also handles dates that are already strings.
+ */
+function parseExcelDate(value) {
+  if (!value) return null
+  
+  // If it's already a string in YYYY-MM-DD format
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value
+  }
+  
+  // If it's a string in DD/MM/YYYY format
+  if (typeof value === 'string' && /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(value)) {
+    const [day, month, year] = value.split('/')
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+  }
+  
+  // If it's a number (Excel serial date)
+  if (typeof value === 'number') {
+    const date = XLSX.SSF.parse_date_code(value)
+    if (date) {
+      return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`
+    }
+  }
+  
+  // Try to parse as date string
+  const str = String(value).trim()
+  const parsed = new Date(str)
+  if (!isNaN(parsed.getTime())) {
+    return parsed.toISOString().split('T')[0]
+  }
+  
+  return str
+}
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
@@ -100,11 +136,11 @@ async function main() {
       const documento = String(row.documento || row.document_id || row.cedula || '').trim()
       const nombre = String(row.nombre || row.full_name || row.name || '').trim()
       const pin = String(row.pin || '1234').trim().padStart(4, '0')
-      const fechaNac = String(row.fecha_nacimiento || row.birth_date || row.nacimiento || '2000-01-01').trim()
+      const fechaNac = parseExcelDate(row.fecha_nacimiento || row.birth_date || row.nacimiento) || '2000-01-01'
       const celular = String(row.celular || row.phone || row.telefono || '').trim()
       const planNombre = String(row.plan || row.plan_nombre || '').trim()
       const diasRestantes = parseInt(row.dias_restantes || row.remaining_days || '0', 10)
-      const fechaVencimiento = String(row.fecha_vencimiento || row.expiration_date || '').trim()
+      const fechaVencimiento = parseExcelDate(row.fecha_vencimiento || row.expiration_date) || ''
       const observaciones = String(row.observaciones || row.observations || '').trim() || null
 
       // Validaciones básicas

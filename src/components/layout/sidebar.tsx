@@ -21,14 +21,16 @@ export interface NavItem {
   href: string
   icon: React.ComponentType<{ className?: string }>
   adminOnly?: boolean
+  /** If set, only these roles can see this item */
+  allowedRoles?: string[]
 }
 
 const navItems: NavItem[] = [
-  { label: "Tablero", href: "/", icon: LayoutDashboard },
-  { label: "Planes", href: "/plans", icon: ClipboardList },
-  { label: "Afiliados", href: "/affiliates", icon: Users },
+  { label: "Tablero", href: "/", icon: LayoutDashboard, allowedRoles: ['admin', 'instructor'] },
+  { label: "Planes", href: "/plans", icon: ClipboardList, allowedRoles: ['admin', 'instructor'] },
+  { label: "Afiliados", href: "/affiliates", icon: Users, allowedRoles: ['admin', 'instructor'] },
   { label: "Ingreso", href: "/entry", icon: DoorOpen },
-  { label: "Informes", href: "/reports", icon: BarChart3 },
+  { label: "Informes", href: "/reports", icon: BarChart3, allowedRoles: ['admin', 'instructor'] },
   { label: "Configuración", href: "/settings", icon: Settings, adminOnly: true },
 ]
 
@@ -45,9 +47,11 @@ export function Sidebar({ userRole = "staff", onNavigate }: SidebarProps) {
     return pathname.startsWith(href)
   }
 
-  const visibleItems = navItems.filter(
-    (item) => !item.adminOnly || userRole === "admin"
-  )
+  const visibleItems = navItems.filter((item) => {
+    if (item.adminOnly && userRole !== 'admin') return false
+    if (item.allowedRoles && !item.allowedRoles.includes(userRole)) return false
+    return true
+  })
 
   return (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
