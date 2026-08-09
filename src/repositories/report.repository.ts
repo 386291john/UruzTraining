@@ -238,10 +238,19 @@ export async function getExpiredAffiliates(): Promise<AffiliateStatusRow[]> {
 
   const allRows = [...(expiredData ?? []), ...(consumedData ?? []), ...(expiredByDateData ?? [])]
 
-  if (allRows.length === 0) return []
+  // Deduplicate by affiliate_id (a user can match multiple conditions)
+  const seen = new Set<string>()
+  const uniqueRows = allRows.filter((row: Record<string, unknown>) => {
+    const affiliateId = row.affiliate_id as string
+    if (seen.has(affiliateId)) return false
+    seen.add(affiliateId)
+    return true
+  })
+
+  if (uniqueRows.length === 0) return []
 
   const instructorIdSet = new Set<string>()
-  allRows.forEach((r: Record<string, unknown>) => {
+  uniqueRows.forEach((r: Record<string, unknown>) => {
     const affiliate = r.affiliate as { instructor_id: string } | null
     if (affiliate?.instructor_id) instructorIdSet.add(affiliate.instructor_id)
   })
@@ -257,7 +266,7 @@ export async function getExpiredAffiliates(): Promise<AffiliateStatusRow[]> {
     (instructors ?? []).map((i: { id: string; full_name: string }) => [i.id, i.full_name])
   )
 
-  return allRows.map((row: Record<string, unknown>) => {
+  return uniqueRows.map((row: Record<string, unknown>) => {
     const affiliate = row.affiliate as { full_name: string; document_id: string; instructor_id: string } | null
     const plan = row.plan as { name: string } | null
     return {
