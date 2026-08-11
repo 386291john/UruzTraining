@@ -5,7 +5,7 @@
  * Validates: Requirements 1.3, 1.4
  */
 
-export type UserRole = 'admin' | 'instructor'
+export type UserRole = 'admin' | 'instructor' | 'gimnasio'
 
 export type PermissionAction =
   | 'create'
