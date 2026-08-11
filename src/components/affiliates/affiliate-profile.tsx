@@ -86,6 +86,9 @@ export function AffiliateProfile({ profile, onPinUpdated, onRenewed }: Affiliate
   const { plans, fetchPlans } = usePlans()
   const [pinDialogOpen, setPinDialogOpen] = useState(false)
   const [renewDialogOpen, setRenewDialogOpen] = useState(false)
+  const [expirationDialogOpen, setExpirationDialogOpen] = useState(false)
+  const [newExpirationDate, setNewExpirationDate] = useState('')
+  const [isSavingExpiration, setIsSavingExpiration] = useState(false)
   const [isUpdatingPin, setIsUpdatingPin] = useState(false)
   const [isRenewing, setIsRenewing] = useState(false)
 
@@ -172,6 +175,27 @@ export function AffiliateProfile({ profile, onPinUpdated, onRenewed }: Affiliate
     }
   }
 
+  async function handleSaveExpiration() {
+    if (!newExpirationDate) return
+    setIsSavingExpiration(true)
+    try {
+      const res = await fetch(`/api/affiliates/${profile.id}/membership`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ expiration_date: newExpirationDate }),
+      })
+      const json = await res.json()
+      if (json.success) {
+        setExpirationDialogOpen(false)
+        onRenewed?.() // Refresh profile
+      }
+    } catch {
+      // silent
+    } finally {
+      setIsSavingExpiration(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Affiliate Info */}
@@ -224,22 +248,37 @@ export function AffiliateProfile({ profile, onPinUpdated, onRenewed }: Affiliate
         </CardHeader>
         <CardContent>
           {profile.membership ? (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Plan</p>
-                <p>{profile.membership.plan_name}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Estado</p>
-                {getStatusBadge(profile.membership.status)}
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Días restantes</p>
-                <p>{getDaysRemainingText()}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Vencimiento</p>
-                <p>{formatDate(profile.membership.expiration_date)}</p>
+            <div className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Plan</p>
+                  <p>{profile.membership.plan_name}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Estado</p>
+                  {getStatusBadge(profile.membership.status)}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Días restantes</p>
+                  <p>{getDaysRemainingText()}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Vencimiento</p>
+                  <div className="flex items-center gap-2">
+                    <p>{formatDate(profile.membership.expiration_date)}</p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs"
+                      onClick={() => {
+                        setNewExpirationDate(profile.membership?.expiration_date || '')
+                        setExpirationDialogOpen(true)
+                      }}
+                    >
+                      Editar
+                    </Button>
+                  </div>
+                </div>
               </div>
             </div>
           ) : (
@@ -445,6 +484,46 @@ export function AffiliateProfile({ profile, onPinUpdated, onRenewed }: Affiliate
               </DialogFooter>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Expiration Date Edit Dialog */}
+      <Dialog open={expirationDialogOpen} onOpenChange={setExpirationDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Editar fecha de vencimiento</DialogTitle>
+            <DialogDescription>
+              Ajusta la fecha de fin del plan para {profile.full_name}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label htmlFor="expiration_date" className="text-sm font-medium">
+                Nueva fecha de vencimiento
+              </label>
+              <Input
+                id="expiration_date"
+                type="date"
+                value={newExpirationDate}
+                onChange={(e) => setNewExpirationDate(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setExpirationDialogOpen(false)}
+              disabled={isSavingExpiration}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSaveExpiration}
+              disabled={isSavingExpiration || !newExpirationDate}
+            >
+              {isSavingExpiration ? 'Guardando...' : 'Guardar'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

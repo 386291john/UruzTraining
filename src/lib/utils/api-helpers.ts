@@ -11,7 +11,7 @@ import { NextResponse } from 'next/server'
 export interface AuthenticatedUser {
   id: string
   email: string
-  role: 'admin' | 'instructor'
+  role: 'admin' | 'instructor' | 'gimnasio'
   fullName: string
 }
 
@@ -43,14 +43,14 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
   }
 
   const role = profile.role as string
-  if (role !== 'admin' && role !== 'instructor') {
+  if (role !== 'admin' && role !== 'instructor' && role !== 'gimnasio') {
     return null
   }
 
   return {
     id: user.id,
     email: user.email!,
-    role: role as 'admin' | 'instructor',
+    role: role as 'admin' | 'instructor' | 'gimnasio',
     fullName: profile.full_name,
   }
 }
