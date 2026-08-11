@@ -20,6 +20,7 @@ export type PermissionAction =
 const PERMISSIONS: Record<UserRole, Set<PermissionAction>> = {
   admin: new Set<PermissionAction>(['create', 'read', 'update', 'delete', 'manage_settings']),
   instructor: new Set<PermissionAction>(['create', 'read', 'update']),
+  gimnasio: new Set<PermissionAction>(['read', 'create']),
 }
 
 /**
